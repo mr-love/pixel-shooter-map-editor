@@ -1,0 +1,223 @@
+<html>
+	<head>
+		<style>
+			.gridSquare {
+				width: 1.5em;
+				height: 1.5em;
+				border: 0;
+				margin-left: 1px;
+				margin-bottom: 1px;
+				transition: background-color 0.1s, opacity 0.1s;
+			}
+			.gridSquare:focus {
+				outline: none;
+			}
+			.gridSquare.empty {
+				background-color: #8e8f90;
+			}
+			.gridSquare.wall {
+				background-color: #2c5be6;
+			}
+			.gridSquare:hover {
+				opacity: 0.85;
+			}
+			.control {
+				background: #2c5be6;
+				border-radius: 2px;
+				border: 0;
+				outline: none;
+				height: 27px;
+				min-width: 27px;
+				padding: 6px;
+				padding-left: 10px;
+				padding-right: 10px;
+				color: white;
+			}
+			
+			.control:hover {
+				opacity: 0.9;
+			}
+			
+			.control:active {
+				opacity: 0.8;
+				box-shadow: 1px 1px 3px grey;
+			}
+			
+			input[type=number], input[type=text] {
+				min-width: 27px;
+				outline: none;
+				border: 1px solid #afafaf;
+				border-radius: 2px;
+				height: 27px;
+				padding-left: 10px;
+				padding-right: 10px;
+			}
+			
+			label {
+				font-family: sans-serif;
+				color: #333333;
+			}
+		</style>
+	</head>
+	<body>
+		<center>
+			<label for="loadMapFile">Load Map: </label><input id="loadMapFile" name="loadMapFile" type="file" onchange="loadMapFile(this);" />
+			<br />
+			<br />
+			<label for="mapWidth">Width: </label><input type="number" min="1" max="150" step="1" id="mapWidth" name="mapWidth" value="20"/>
+			<label for="mapHeight">Height: </label><input type="number" min="1" max="150" step="1" id="mapHeight" name="mapHeight" value="20"/>
+			<button class="control" onclick="generateMap();">Generate Map</button>
+			<button class="control" onclick="changeSquareDim('+');">+</button>
+			<button class="control" onclick="changeSquareDim('-');">-</button>
+			<br />
+			<br />
+			<div id="map" style="display: block;"></div>
+			<br />
+			<br />
+			<label for="mapName">Name: </label><input type="text" id="mapName" name="mapName" value="map"/>
+			<button class="control" onclick="downloadMap();">Download Map</button>
+		</center>
+		<script type="text/javascript">
+let grid = [];
+let squareDim = 1.5;
+let textFile = null;
+
+let loadMapFile = function(o) {
+	let fr = new FileReader();
+	fr.onload = function(e) {
+		readMapFile(e, o);
+	};
+	fr.readAsText(o.files[0]);
+};
+
+let readMapFile = function(e, o) {
+	grid = [];
+	let data = e.target.result;
+	data = data.replace(/grid/g, "");
+	data = data.split("&");
+	for (let i=0; i<data.length; i++) {
+		let square = data[i].split("=");
+		let coord = square[0].split(",");
+		let x = parseInt(coord[0]);
+		let y = parseInt(coord[1]);
+		let value = parseInt(square[1]);
+		if (!grid[x]) {
+			grid[x] = [];
+		}
+		grid[x][y] = value;
+	}
+	loadMapGrid();
+};
+
+let changeSquareDim = function(op) {
+	let stylesheet = document.styleSheets[0];
+	if (op === "+") {
+		squareDim += 0.1;
+	} else {
+		squareDim -= 0.1;
+	}
+	stylesheet.cssRules[0].style.width = squareDim + "em"
+	stylesheet.cssRules[0].style.height = squareDim + "em"
+};
+
+let loadMapGrid = function() {
+	let map = document.getElementById("map");
+	while (map.hasChildNodes()) {
+		map.removeChild(map.lastChild);
+	}
+	for (let x=0; x<grid.length; x++) {
+		let row = createRow(x);
+		map.appendChild(row);
+		for (let y=0; y<grid[x].length; y++) {
+			let square = createSquare(x, y);
+			row.appendChild(square);
+			if (grid[x][y] === 10) {
+				grid[x][y] = 0;
+				toggleSquare(x, y);
+			}
+			if (x === 0 || x === grid.length-1 || y === 0 || y === grid[x].length-1) {
+				grid[x][y] = 0;
+				toggleSquare(x, y);
+				square.setAttribute("onclick", "");
+			}
+		}
+	}
+};
+
+let createGrid = function(width, height) {
+	grid = [];
+	for (let x=0; x<width; x++) {
+		grid[x] = [];
+		for (let y=0; y<height; y++) {
+			grid[x][y] = 0;
+			if (x === 0 || x === width-1 || y === 0 || y === height-1) {
+				grid[x][y] = 10;
+			}
+		}
+	}
+	loadMapGrid();
+};
+
+let createRow = function(x) {
+	let row = document.createElement("div");
+	row.setAttribute("id", "row_" + x);
+	row.setAttribute("style", "display: block;");
+	return row;
+};
+
+let createSquare = function(x, y) {
+	let square = document.createElement("button")
+	square.setAttribute("id", "grid_" + x + "_" + y);
+	square.setAttribute("class", "gridSquare empty");
+	square.setAttribute("onclick", "toggleSquare(" + x + "," + y + ");");
+	return square;
+};
+
+let generateMap = function() {
+	let width = parseInt(document.getElementById("mapWidth").value);
+	let height = parseInt(document.getElementById("mapHeight").value);
+	createGrid(width, height);
+	return;
+};
+
+let toggleSquare = function(x, y) {
+	let square = document.getElementById("grid_" + x + "_" + y);
+	if (grid[x][y] === 0) {
+		grid[x][y] = 10;
+		square.setAttribute("class", "gridSquare wall");
+	} else {
+		grid[x][y] = 0;
+		square.setAttribute("class", "gridSquare empty");
+	}
+};
+
+let downloadMap = function() {
+	let data = ""
+	// Data format: grid<x>,<y>=<value>&
+	for (let x=0; x<grid.length; x++) {
+		for (let y=0; y<grid[x].length; y++) {
+			data += "grid" + x + "," + y + "=" + grid[x][y];
+			if (x !== grid.length-1 || y !== grid[x].length-1 ) {
+				data += "&";
+			}
+		}
+	}
+	let filename = document.getElementById("mapName").value
+	downloadMapFile(filename + '.map', data);
+};
+
+let downloadMapFile = function(filename, data) {
+	let file = document.createElement('a');
+	file.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(data));
+	file.setAttribute('download', filename);
+	if (document.createEvent) {
+		let event = document.createEvent('MouseEvents');
+		event.initEvent('click', true, true);
+		file.dispatchEvent(event);
+	} else {
+		file.click();
+	}
+};
+		</script>
+	</body>
+</html>
